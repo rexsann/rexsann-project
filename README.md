@@ -74,7 +74,7 @@ Urutan yang disarankan: US-01, US-02, US-03, US-04, US-05, US-06, lalu fitur bon
 
 ## Tentang aplikasi ini
 
-- **Nama usaha:**
-- **Pembuat:**
-- **Link aplikasi:**
+- **Nama usaha:ShineStore**
+- **Pembuat:Muhammad Ihsan**
+- **Link aplikasi:https://rexsann-project-git-main-rexsann.vercel.app/**
 - **Fitur bonus yang dikerjakan:**
