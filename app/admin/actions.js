@@ -257,3 +257,53 @@ export async function ubahProduk(idOrPrevState, prevStateOrFormData, maybeFormDa
 }
 
 export const updateProduct = ubahProduk;
+
+/**
+ * Server Action untuk menghapus produk dari database (US-10).
+ * Memeriksa sesi login admin di server sebelum menghapus.
+ */
+export async function hapusProduk(formData) {
+  const id = formData?.get?.("id")?.toString()?.trim();
+
+  if (!id) {
+    return { error: "ID produk tidak valid." };
+  }
+
+  let supabase;
+  try {
+    supabase = await createAdminClient();
+  } catch (err) {
+    return { error: "Gagal menghubungkan ke layanan database." };
+  }
+
+  // Wajib periksa bahwa admin sudah login sebelum mengubah data (aturan keamanan AGENTS.md)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Sesi telah berakhir atau Anda belum login. Silakan login kembali." };
+  }
+
+  const { data: deletedProduct, error: deleteError } = await supabase
+    .from("produk")
+    .delete()
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (deleteError) {
+    return { error: deleteError.message || "Gagal menghapus produk dari database." };
+  }
+
+  if (!deletedProduct) {
+    return { error: "Produk yang ingin dihapus tidak ditemukan di database." };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  redirect("/admin");
+}
+
+export const deleteProduct = hapusProduk;
