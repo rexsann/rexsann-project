@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
 
 /**
@@ -105,3 +106,66 @@ export async function gantiPassword(prevState, formData) {
 }
 
 export const changePassword = gantiPassword;
+
+/**
+ * Server Action untuk menambah produk baru ke database (US-08).
+ * Memeriksa sesi login admin di server, memvalidasi input, dan menyimpan ke tabel 'produk'.
+ */
+export async function tambahProduk(prevState, formData) {
+  const data = formData instanceof FormData ? formData : prevState;
+  const nama = data?.get?.("nama")?.toString()?.trim();
+  const hargaRaw = data?.get?.("harga")?.toString()?.trim();
+  const kategori = data?.get?.("kategori")?.toString()?.trim() || null;
+  const foto_url = data?.get?.("foto_url")?.toString()?.trim() || null;
+  const deskripsi = data?.get?.("deskripsi")?.toString()?.trim() || null;
+
+  if (!nama) {
+    return { error: "Nama produk wajib diisi." };
+  }
+
+  if (!hargaRaw) {
+    return { error: "Harga produk wajib diisi." };
+  }
+
+  const harga = Number(hargaRaw);
+  if (isNaN(harga) || !Number.isInteger(harga) || harga < 0) {
+    return { error: "Harga produk harus berupa bilangan bulat tidak negatif (>= 0)." };
+  }
+
+  let supabase;
+  try {
+    supabase = await createAdminClient();
+  } catch (err) {
+    return { error: "Gagal menghubungkan ke layanan database." };
+  }
+
+  // Wajib periksa bahwa admin sudah login sebelum mengubah data (aturan keamanan AGENTS.md)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Sesi telah berakhir atau Anda belum login. Silakan login kembali." };
+  }
+
+  const { error: insertError } = await supabase
+    .from("produk")
+    .insert({
+      nama,
+      harga,
+      kategori,
+      foto_url,
+      deskripsi,
+    });
+
+  if (insertError) {
+    return { error: insertError.message || "Gagal menyimpan produk ke database." };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  redirect("/admin");
+}
+
+export const createProduct = tambahProduk;
