@@ -1,3 +1,6 @@
+"use client";
+
+import { useActionState } from "react";
 import Input from "@/components/Input";
 import Tombol from "@/components/Tombol";
 
@@ -7,11 +10,17 @@ export default function FormProduk({
   produk = {},
   labelTombol,
   action,
-  error,
-  isPending = false,
+  error: errorProp,
+  isPending: isPendingProp = false,
 }) {
+  const [state, formAction, isPendingAction] = useActionState(action, null);
+
+  const error = errorProp || state?.error;
+  const isPending = isPendingProp || isPendingAction;
+
   return (
-    <form action={action} className="flex max-w-xl flex-col gap-4">
+    <form action={formAction} className="flex max-w-xl flex-col gap-4">
+      {produk.id && <input type="hidden" name="id" value={produk.id} />}
       {error && (
         <p className="rounded-lg border border-garis bg-permukaan px-3 py-2 text-sm text-bahaya">
           {error}

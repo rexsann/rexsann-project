@@ -169,3 +169,91 @@ export async function tambahProduk(prevState, formData) {
 }
 
 export const createProduct = tambahProduk;
+
+/**
+ * Server Action untuk mengubah produk di database (US-09).
+ * Memeriksa sesi login admin di server, memvalidasi input, dan memperbarui tabel 'produk'.
+ */
+export async function ubahProduk(idOrPrevState, prevStateOrFormData, maybeFormData) {
+  let id;
+  let data;
+
+  if (maybeFormData instanceof FormData) {
+    id = idOrPrevState;
+    data = maybeFormData;
+  } else if (prevStateOrFormData instanceof FormData) {
+    data = prevStateOrFormData;
+    id = data.get("id")?.toString()?.trim();
+  } else if (idOrPrevState instanceof FormData) {
+    data = idOrPrevState;
+    id = data.get("id")?.toString()?.trim();
+  }
+
+  if (!id) {
+    return { error: "ID produk tidak valid atau tidak ditemukan." };
+  }
+
+  const nama = data?.get?.("nama")?.toString()?.trim();
+  const hargaRaw = data?.get?.("harga")?.toString()?.trim();
+  const kategori = data?.get?.("kategori")?.toString()?.trim() || null;
+  const foto_url = data?.get?.("foto_url")?.toString()?.trim() || null;
+  const deskripsi = data?.get?.("deskripsi")?.toString()?.trim() || null;
+
+  if (!nama) {
+    return { error: "Nama produk wajib diisi." };
+  }
+
+  if (!hargaRaw) {
+    return { error: "Harga produk wajib diisi." };
+  }
+
+  const harga = Number(hargaRaw);
+  if (isNaN(harga) || !Number.isInteger(harga) || harga < 0) {
+    return { error: "Harga produk harus berupa bilangan bulat tidak negatif (>= 0)." };
+  }
+
+  let supabase;
+  try {
+    supabase = await createAdminClient();
+  } catch (err) {
+    return { error: "Gagal menghubungkan ke layanan database." };
+  }
+
+  // Wajib periksa bahwa admin sudah login sebelum mengubah data (aturan keamanan AGENTS.md)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Sesi telah berakhir atau Anda belum login. Silakan login kembali." };
+  }
+
+  const { data: updatedProduct, error: updateError } = await supabase
+    .from("produk")
+    .update({
+      nama,
+      harga,
+      kategori,
+      foto_url,
+      deskripsi,
+    })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (updateError) {
+    return { error: updateError.message || "Gagal menyimpan perubahan ke database." };
+  }
+
+  if (!updatedProduct) {
+    return { error: "Produk yang ingin diubah tidak ditemukan di database." };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/produk/${id}`);
+  redirect("/admin");
+}
+
+export const updateProduct = ubahProduk;
