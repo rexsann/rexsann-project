@@ -1,10 +1,14 @@
-import KartuProduk from "@/components/KartuProduk";
+import KatalogProduk from "@/components/KatalogProduk";
 import { toko } from "@/lib/toko";
 import { createServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function HalamanKatalog() {
+export default async function HalamanKatalog({ searchParams }) {
+  const params = await searchParams;
+  const initialCari = params?.cari || params?.q || "";
+  const initialKategori = params?.kategori || "Semua";
+
   let daftarProduk = null;
   let pesanError = null;
 
@@ -44,14 +48,12 @@ export default async function HalamanKatalog() {
             <p className="font-semibold">Gagal memuat produk</p>
             <p className="mt-1 text-sm text-teks-lembut">{pesanError}</p>
           </div>
-        ) : daftarProduk && daftarProduk.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {daftarProduk.map((produk) => (
-              <KartuProduk key={produk.id} produk={produk} />
-            ))}
-          </div>
         ) : (
-          <p className="py-8 text-center text-teks-lembut">Belum ada produk</p>
+          <KatalogProduk
+            daftarProduk={daftarProduk || []}
+            initialCari={initialCari}
+            initialKategori={initialKategori}
+          />
         )}
       </section>
     </>
